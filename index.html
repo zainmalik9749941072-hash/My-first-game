@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My First Game</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  touch-action: none;
+}
+
+body {
+  margin: 0;
+  background: #111;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+}
+
+#game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #333;
+  overflow: hidden;
+}
+
+.road {
+  position: absolute;
+  left: 15%;
+  width: 70%;
+  height: 100%;
+  background: #444;
+  border-left: 6px solid white;
+  border-right: 6px solid white;
+}
+
+.line {
+  position: absolute;
+  width: 8px;
+  height: 80px;
+  background: white;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#player {
+  position: absolute;
+  width: 55px;
+  height: 90px;
+  background: red;
+  border-radius: 12px;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 0 10px #000;
+}
+
+#player::before {
+  content: "";
+  position: absolute;
+  width: 35px;
+  height: 25px;
+  background: lightblue;
+  left: 10px;
+  top: 12px;
+  border-radius: 6px;
+}
+
+.enemy {
+  position: absolute;
+  width: 55px;
+  height: 90px;
+  background: yellow;
+  border-radius: 12px;
+}
+
+#score {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  z-index: 5;
+}
+
+#controls {
+  position: absolute;
+  bottom: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  z-index: 10;
+}
+
+button {
+  width: 100px;
+  height: 60px;
+  border: none;
+  border-radius: 15px;
+  font-size: 30px;
+  background: white;
+}
+
+#gameover {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.8);
+  color: white;
+  z-index: 20;
+  text-align: center;
+  padding-top: 35vh;
+}
+
+#gameover h1 {
+  font-size: 40px;
+}
+
+#restart {
+  font-size: 20px;
+  width: 150px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+  <div class="road"></div>
+
+  <div id="score">Score: 0</div>
+
+  <div id="player"></div>
+
+  <div id="gameover">
+    <h1>GAME OVER</h1>
+    <p id="finalScore"></p>
+    <button id="restart">Restart</button>
+  </div>
+
+  <div id="controls">
+    <button id="left">⬅️</button>
+    <button id="right">➡️</button>
+  </div>
+
+</div>
+
+<script>
+const game = document.getElementById("game");
+const player = document.getElementById("player");
+const scoreText = document.getElementById("score");
+const gameover = document.getElementById("gameover");
+const finalScore = document.getElementById("finalScore");
+const restart = document.getElementById("restart");
+
+let playerX;
+let score = 0;
+let speed = 5;
+let leftPressed = false;
+let rightPressed = false;
+let running = true;
+let enemies = [];
+
+function startGame() {
+  playerX = game.clientWidth / 2 - 27;
+  player.style.left = playerX + "px";
+
+  score = 0;
+  speed = 5;
+  running = true;
+
+  enemies.forEach(e => e.remove());
+  enemies = [];
+
+  gameover.style.display = "none";
+
+  requestAnimationFrame(gameLoop);
+}
+
+function createEnemy() {
+  const enemy = document.createElement("div");
+  enemy.className = "enemy";
+
+  const roadLeft = game.clientWidth * 0.15;
+  const roadWidth = game.clientWidth * 0.70;
+
+  const x = roadLeft + Math.random() * (roadWidth - 55);
+
+  enemy.style.left = x + "px";
+  enemy.style.top = "-100px";
+
+  game.appendChild(enemy);
+  enemies.push(enemy);
+}
+
+function collision(a, b) {
+  const r1 = a.getBoundingClientRect();
+  const r2 = b.getBoundingClientRect();
+
+  return !(
+    r1.bottom < r2.top ||
+    r1.top > r2.bottom ||
+    r1.right < r2.left ||
+    r1.left > r2.right
+  );
+}
+
+let lastEnemy = 0;
+
+function gameLoop(time) {
+
+  if (!running) return;
+
+  if (leftPressed) {
+    playerX -= 7;
+  }
+
+  if (rightPressed) {
+    playerX += 7;
+  }
+
+  const roadLeft = game.clientWidth * 0.15;
+  const roadRight = game.clientWidth * 0.85 - 55;
+
+  if (playerX < roadLeft) playerX = roadLeft;
+  if (playerX > roadRight) playerX = roadRight;
+
+  player.style.left = playerX + "px";
+
+  if (time - lastEnemy > 1000) {
+    createEnemy();
+    lastEnemy = time;
+  }
+
+  enemies.forEach((enemy, index) => {
+
+    let top = parseFloat(enemy.style.top);
+    top += speed;
+
+    enemy.style.top = top + "px";
+
+    if (collision(player, enemy)) {
+      endGame();
+    }
+
+    if (top > game.clientHeight) {
+      enemy.remove();
+      enemies.splice(index, 1);
+
+      score++;
+      scoreText.textContent = "Score: " + score;
+
+      if (score % 5 === 0) {
+        speed += 0.5;
+      }
+    }
+  });
+
+  requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+  running = false;
+  finalScore.textContent = "Your Score: " + score;
+  gameover.style.display = "block";
+}
+
+function pressLeft(e) {
+  e.preventDefault();
+  leftPressed = true;
+}
+
+function releaseLeft(e) {
+  e.preventDefault();
+  leftPressed = false;
+}
+
+function pressRight(e) {
+  e.preventDefault();
+  rightPressed = true;
+}
+
+function releaseRight(e) {
+  e.preventDefault();
+  rightPressed = false;
+}
+
+const left = document.getElementById("left");
+const right = document.getElementById("right");
+
+left.addEventListener("touchstart", pressLeft);
+left.addEventListener("touchend", releaseLeft);
+
+right.addEventListener("touchstart", pressRight);
+right.addEventListener("touchend", releaseRight);
+
+left.addEventListener("mousedown", pressLeft);
+left.addEventListener("mouseup", releaseLeft);
+
+right.addEventListener("mousedown", pressRight);
+right.addEventListener("mouseup", releaseRight);
+
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") leftPressed = true;
+  if (e.key === "ArrowRight") rightPressed = true;
+});
+
+document.addEventListener("keyup", e => {
+  if (e.key === "ArrowLeft") leftPressed = false;
+  if (e.key === "ArrowRight") rightPressed = false;
+});
+
+restart.addEventListener("click", startGame);
+
+startGame();
+</script>
+
+</body>
+  </html>
